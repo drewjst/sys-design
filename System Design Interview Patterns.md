@@ -11,6 +11,7 @@ There are only a handful of fundamental architectural patterns that solve most s
 | [Real-Time](#3-real-time-bidirectional-pattern) | Live updates required | Balanced | Eventual | Very low |
 | [Event-Driven](#4-event-driven-pattern) | Service coordination | Varies | Eventual | Async |
 | [CQRS](#5-cqrs-pattern) | Read/write models diverge | Complex | Eventual | Optimized |
+| [Strangler Fig](#6-strangler-fig-pattern) | Monolith → microservices | Varies | Dual-system | Proxy overhead |
 
 **Interview tip:** Start every answer by identifying which pattern fits, then justify your choice.
 
@@ -328,6 +329,90 @@ flowchart TB
 - "CQRS lets us scale reads and writes independently with different tech"
 - "The search index is eventually consistent—typically 2-3 seconds behind"
 - "If we need to change the read model, we replay events to rebuild the projection"
+
+---
+
+## 6. Strangler Fig Pattern
+
+> Reference: [Martin Fowler's Strangler Fig Application](https://martinfowler.com/bliki/StranglerFigApplication.html)
+
+**The shape:** Proxy layer incrementally routes traffic from monolith to new services
+**Use when:** Legacy modernization, monolith decomposition, risk-averse migrations
+**Key requirement:** Zero-downtime migration with rollback capability
+
+```mermaid
+flowchart TB
+    subgraph "Clients"
+        C[Clients / Agents]
+    end
+
+    subgraph "Routing Layer"
+        GW[API Gateway / Proxy]
+    end
+
+    subgraph "New Services"
+        USER[User Service]
+        QUOTE[Quote Service]
+        DOCS[Document Service]
+    end
+
+    subgraph "Legacy System"
+        MONO[Legacy Monolith<br/>Rails / Java EE]
+        LEGACY_DB[(Legacy DB)]
+    end
+
+    subgraph "Data Sync"
+        CDC[CDC / Debezium]
+        RECONCILER[Reconciler]
+    end
+
+    C --> GW
+    GW --> |"/users/*"| USER
+    GW --> |"/quotes/*"| QUOTE
+    GW --> |"/docs/*"| DOCS
+    GW --> |"Everything else"| MONO
+
+    MONO --> LEGACY_DB
+    LEGACY_DB --> |"Transaction log"| CDC
+    CDC --> USER & QUOTE & DOCS
+    RECONCILER -.-> |"Periodic sync"| USER & QUOTE & DOCS
+```
+
+### Data Synchronization Strategies
+
+| Requirement | Pattern | Notes |
+|------------|---------|-------|
+| Real-time, can't modify monolith | **CDC (Debezium)** | Reads DB transaction log |
+| Real-time, can modify monolith | **Outbox Pattern** | Transactional guarantee |
+| Simple case, accept some risk | **Dual Write** | Write to both DBs; failure risk |
+| Batch/reporting | **Reconciler** | Periodic sync, handles complexity |
+
+### Key Decisions to Discuss
+
+| Decision | Options | Tradeoff |
+|----------|---------|----------|
+| Extraction order | Low-risk first vs high-value first | Confidence building vs quick wins |
+| Data ownership | Shared DB vs per-service DB | Simplicity vs autonomy |
+| Sync mechanism | CDC vs dual-write vs API calls | Consistency vs complexity |
+| Rollback strategy | Feature flags vs DNS routing | Speed vs granularity |
+
+### What Interviewers Want to Hear
+
+- "I'd start with low-risk, well-bounded domains like document generation to build team confidence and prove out our CI/CD patterns"
+- "The proxy layer gives us rollback capability—if the new service fails, we route traffic back to the monolith instantly"
+- "For data sync, CDC with Debezium watches the Postgres transaction log without modifying the legacy system"
+- "The Anti-Corruption Layer translates between old and new interfaces so we don't pollute the new services with legacy concepts"
+
+### Migration Sequence
+
+1. **Add proxy layer** in front of monolith (API Gateway, NGINX, or AWS Refactor Spaces)
+2. **Identify bounded context** — start with low-risk, well-isolated features
+3. **Extract service** — implement new service with its own database
+4. **Sync data** — CDC or reconciler keeps both systems consistent
+5. **Route traffic** — proxy sends requests to new service based on path/feature flags
+6. **Validate** — run both systems in parallel, compare results
+7. **Decommission** — remove feature from monolith once stable
+8. **Repeat** — continue until monolith is fully decomposed
 
 ---
 
