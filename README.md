@@ -14,6 +14,7 @@ Resources for system design interviews, with a focus on insurtech and data-inten
 | [CAP Theorem](System%20Design%20Interview%20Patterns.md#cap-theorem) | Consistency vs availability tradeoffs |
 | [Strangler Fig Pattern](System%20Design%20Interview%20Patterns.md#6-strangler-fig-pattern) | Incremental monolith migration |
 | [Technology Reference](System%20Design%20Interview%20Patterns.md#technology-reference-by-layer) | Tools organized by architectural layer |
+| [Tool Selection Quick Reference](System%20Design%20Interview%20Patterns.md#tool-selection-quick-reference) | Typical stacks by pattern and scale |
 
 ### Root Insurance Interview Questions
 
