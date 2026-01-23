@@ -649,6 +649,399 @@ Small team, simple deployment? → Docker Compose / Swarm
 
 ---
 
+## CAP Theorem
+
+> Reference: [CAP Theorem Explained — Hello Interview](https://www.hellointerview.com/learn/system-design/core-concepts/cap-theorem)
+
+The CAP theorem states that a distributed system can only guarantee **two of three** properties during a network partition:
+
+| Property | Definition | Example |
+|----------|------------|---------|
+| **Consistency (C)** | All nodes see the same data at the same time | After a write, all reads return the new value |
+| **Availability (A)** | Every request receives a response (success or failure) | System responds even if some nodes are down |
+| **Partition Tolerance (P)** | System continues operating despite network failures | Nodes can't communicate but keep serving requests |
+
+### The Reality: CP vs AP
+
+**Network partitions will happen.** You can't choose "CA" in a distributed system—partition tolerance is mandatory. The real choice is:
+
+| Choice | Behavior During Partition | Use Cases | Example Systems |
+|--------|---------------------------|-----------|-----------------|
+| **CP** | Reject requests to maintain consistency | Financial transactions, inventory, bookings | PostgreSQL, MongoDB (majority writes), HBase, Zookeeper |
+| **AP** | Accept requests, reconcile later | Social feeds, shopping carts, session data | Cassandra, DynamoDB, CouchDB, Redis Cluster |
+
+### Interview Framework
+
+```
+1. Identify if system needs strong consistency
+   └─ "Can we show stale data briefly?" → AP is fine
+   └─ "Would stale data cause money loss or double-booking?" → CP required
+
+2. Consider hybrid approaches
+   └─ Browsing products → AP (availability)
+   └─ Checkout/payment → CP (consistency)
+
+3. Know the tradeoffs
+   └─ CP: Higher latency, potential unavailability
+   └─ AP: Eventual consistency, conflict resolution needed
+```
+
+### What Interviewers Want to Hear
+
+- "I'd prioritize consistency for the payment flow—we can't risk double-charging—but for the product catalog, availability matters more since slightly stale prices are acceptable"
+- "DynamoDB is AP by default, but we can use strongly consistent reads for critical paths at the cost of higher latency"
+- "During a partition, a CP system like Postgres will reject writes to the minority partition to prevent split-brain"
+
+### PACELC Extension
+
+CAP only describes behavior **during partitions**. PACELC extends this:
+
+> "If Partition, choose Availability or Consistency; Else (normal operation), choose Latency or Consistency"
+
+| System | During Partition (PAC) | Normal Operation (ELC) |
+|--------|------------------------|------------------------|
+| Cassandra | AP | EL (low latency) |
+| DynamoDB | AP | EL (low latency) |
+| PostgreSQL | CP | EC (consistency) |
+| MongoDB | CP | EC (consistency) |
+
+---
+
+## Root Insurance Interview Questions
+
+Root Insurance is a mobile-first insurtech company using telematics to assess driver risk. Based on their tech stack (mobile telematics, real-time data pipelines, ML-based pricing) and staff engineer expectations, these are the most likely system design questions:
+
+### Question 1: Design a Telematics Data Pipeline
+
+**Prompt:** "Design a system that collects driving behavior data from millions of mobile devices, processes it in real-time, and generates risk scores for insurance pricing."
+
+**Why Root asks this:** Core to their business—they collect accelerometer, gyroscope, and GPS data from 15M+ app installs across 31B+ miles.
+
+```mermaid
+flowchart TB
+    subgraph "Mobile Clients"
+        APP1[Driver App]
+        APP2[Driver App]
+        APP3[Driver App]
+    end
+
+    subgraph "Ingestion"
+        LB[Load Balancer / API Gateway]
+        INGEST[Ingestion Service<br/>Rate limiting, validation]
+    end
+
+    subgraph "Stream Processing"
+        KAFKA[Kafka<br/>Partitioned by driver_id]
+        FLINK[Apache Flink<br/>Real-time feature extraction]
+    end
+
+    subgraph "Feature Store"
+        REDIS[(Redis<br/>Real-time features)]
+        S3[(S3<br/>Historical features)]
+    end
+
+    subgraph "ML Scoring"
+        MODEL[Risk Scoring Service<br/>ML model inference]
+        SHADOW[Shadow Scoring<br/>A/B model testing]
+    end
+
+    subgraph "Storage"
+        TSDB[(TimescaleDB<br/>Trip events)]
+        DW[(Snowflake<br/>Analytics)]
+    end
+
+    APP1 & APP2 & APP3 --> |"Batch events every 30s"| LB
+    LB --> INGEST
+    INGEST --> KAFKA
+    KAFKA --> FLINK
+    FLINK --> REDIS
+    FLINK --> S3
+    FLINK --> TSDB
+    REDIS --> MODEL
+    S3 --> MODEL
+    MODEL --> DW
+    TSDB --> DW
+```
+
+**Key Discussion Points:**
+
+| Topic | What to Cover |
+|-------|---------------|
+| **Data volume** | 10K events/sec per active driver × 1M concurrent = 10B events/day |
+| **Batching** | Mobile app batches 30s of sensor data to reduce battery/network usage |
+| **Partitioning** | Kafka partitioned by `driver_id` for ordered event processing |
+| **Feature extraction** | Flink computes: harsh braking count, speed variance, phone usage detection |
+| **Late arrivals** | Flink watermarks handle out-of-order events from spotty mobile connectivity |
+| **Model serving** | Sub-100ms inference using pre-computed features from Redis |
+
+**What to Say:**
+> "I'd batch sensor data on the device to reduce battery drain—30 second windows work well. On the backend, Kafka partitioned by driver_id ensures event ordering, and Flink extracts driving features in real-time. The risk model pulls pre-computed features from Redis for sub-100ms scoring."
+
+---
+
+### Question 2: Design a Real-Time Fraud Detection System
+
+**Prompt:** "Design a system to detect fraudulent insurance claims or suspicious driving patterns in real-time."
+
+**Why Root asks this:** Insurance fraud costs billions annually; detecting staged accidents or false claims is critical.
+
+```mermaid
+flowchart TB
+    subgraph "Event Sources"
+        CLAIMS[Claims Service]
+        TRIPS[Trip Events]
+        PROFILE[User Profile Changes]
+    end
+
+    subgraph "Stream Processing"
+        KAFKA[Kafka]
+        ENRICHER[Event Enricher<br/>Add historical context]
+    end
+
+    subgraph "Detection Layer"
+        RULES[Rules Engine<br/>Known fraud patterns]
+        ML[ML Anomaly Detection<br/>XGBoost / Neural Net]
+        GRAPH[Graph Analysis<br/>Ring detection]
+    end
+
+    subgraph "Decision Engine"
+        SCORER[Risk Scorer<br/>Combine signals]
+        ACTIONS[Action Router]
+    end
+
+    subgraph "Outcomes"
+        APPROVE[Auto-Approve]
+        REVIEW[Manual Review Queue]
+        BLOCK[Block / Flag]
+    end
+
+    CLAIMS & TRIPS & PROFILE --> KAFKA
+    KAFKA --> ENRICHER
+    ENRICHER --> RULES & ML & GRAPH
+    RULES & ML & GRAPH --> SCORER
+    SCORER --> ACTIONS
+    ACTIONS --> APPROVE & REVIEW & BLOCK
+```
+
+**Key Discussion Points:**
+
+| Topic | What to Cover |
+|-------|---------------|
+| **Latency requirement** | <500ms for real-time blocking; batch for investigation |
+| **Feature examples** | Claim amount vs history, time-of-day patterns, device fingerprint changes |
+| **Rules engine** | Catches known patterns: "3 claims in 30 days", "claim filed 24h after policy start" |
+| **ML model** | Anomaly detection for unknown patterns; trained on historical fraud labels |
+| **Graph analysis** | Detect fraud rings: shared addresses, phone numbers, repair shops |
+| **False positive handling** | Route medium-confidence to human review; track analyst feedback for retraining |
+
+**What to Say:**
+> "I'd combine three approaches: a rules engine for known fraud patterns like multiple claims in 30 days, an ML model for anomaly detection on unknown patterns, and graph analysis to detect fraud rings through shared attributes. The decision engine combines these signals and routes low-confidence cases to human reviewers."
+
+---
+
+### Question 3: Design a Usage-Based Insurance Pricing Engine
+
+**Prompt:** "Design a system that calculates personalized insurance quotes based on real-time driving behavior."
+
+**Why Root asks this:** Their core differentiator—pricing based on actual driving vs demographics.
+
+```mermaid
+flowchart TB
+    subgraph "Quote Request"
+        WEB[Web App]
+        MOBILE[Mobile App]
+        API[Partner API]
+    end
+
+    subgraph "Quote Service"
+        QUOTE[Quote Orchestrator]
+        CACHE[(Quote Cache<br/>Redis)]
+    end
+
+    subgraph "Data Sources"
+        RISK[(Risk Score Service)]
+        DRIVER[(Driver Profile)]
+        VEHICLE[(Vehicle Data)]
+        GEO[(Geolocation Risk)]
+        RATE[(Rate Tables)]
+    end
+
+    subgraph "Pricing Engine"
+        BASE[Base Premium Calculator]
+        MODS[Modifier Engine<br/>Discounts, surcharges]
+        RULES[Business Rules<br/>Regulatory compliance]
+    end
+
+    subgraph "Output"
+        FINAL[Final Quote]
+        AUDIT[(Audit Log)]
+    end
+
+    WEB & MOBILE & API --> QUOTE
+    QUOTE --> CACHE
+    CACHE -.-> |"Cache miss"| QUOTE
+    QUOTE --> RISK & DRIVER & VEHICLE & GEO & RATE
+    RISK & DRIVER & VEHICLE & GEO & RATE --> BASE
+    BASE --> MODS
+    MODS --> RULES
+    RULES --> FINAL
+    RULES --> AUDIT
+```
+
+**Key Discussion Points:**
+
+| Topic | What to Cover |
+|-------|---------------|
+| **Latency** | <2s end-to-end for good UX; cache aggressively |
+| **Data freshness** | Risk scores update nightly; rate tables update monthly |
+| **Regulatory compliance** | Some factors banned in certain states (credit score, gender) |
+| **A/B testing** | Shadow pricing models to test new algorithms |
+| **Audit trail** | Every quote must be reproducible for regulatory review |
+| **Caching strategy** | Cache intermediate calculations; invalidate on profile change |
+
+**What to Say:**
+> "The quote service orchestrates calls to multiple data sources—driver risk score, vehicle data, and rate tables. We cache intermediate calculations in Redis since rate tables only change monthly. Every quote gets logged to an immutable audit table for regulatory compliance."
+
+---
+
+### Question 4: Design a Real-Time Location Tracking System
+
+**Prompt:** "Design a system similar to Uber that tracks driver locations in real-time and matches them to nearby service requests."
+
+**Why Root asks this:** Tests understanding of real-time systems, geospatial indexing—relevant to their telematics infrastructure.
+
+```mermaid
+flowchart TB
+    subgraph "Drivers"
+        D1[Driver 1]
+        D2[Driver 2]
+        D3[Driver N]
+    end
+
+    subgraph "Connection Layer"
+        LB[Load Balancer<br/>Sticky sessions]
+        WS1[WebSocket Server]
+        WS2[WebSocket Server]
+    end
+
+    subgraph "Location Processing"
+        KAFKA[Kafka<br/>Location events]
+        LOC_SVC[Location Service]
+    end
+
+    subgraph "Geospatial Index"
+        REDIS[(Redis GEOSEARCH<br/>Real-time positions)]
+        QUADTREE[QuadTree Index<br/>Efficient range queries]
+    end
+
+    subgraph "Matching"
+        MATCH[Matching Service]
+        NOTIFY[Notification Service]
+    end
+
+    D1 & D2 & D3 --> |"Location every 4s"| LB
+    LB --> WS1 & WS2
+    WS1 & WS2 --> KAFKA
+    KAFKA --> LOC_SVC
+    LOC_SVC --> REDIS
+    REDIS --> MATCH
+    MATCH --> NOTIFY
+    NOTIFY --> WS1 & WS2
+```
+
+**Key Discussion Points:**
+
+| Topic | What to Cover |
+|-------|---------------|
+| **Update frequency** | 4-second intervals balance accuracy vs battery/bandwidth |
+| **Geospatial indexing** | Redis GEOADD/GEOSEARCH or custom geohashing for O(1) lookups |
+| **Connection management** | WebSockets with sticky sessions; handle reconnection gracefully |
+| **Consistency** | Location data is ephemeral—eventual consistency is fine |
+| **Scaling** | Partition by geographic region to localize traffic |
+| **Hot spots** | Special handling for high-density areas (airports, stadiums) |
+
+**What to Say:**
+> "Drivers send location updates every 4 seconds over WebSocket. We store positions in Redis using GEOADD for O(1) geospatial queries. When a rider requests a match, we use GEOSEARCH to find drivers within 5km and rank by ETA. The system is partitioned by geographic region to keep traffic localized."
+
+---
+
+### Question 5: Design a Real-Time Analytics Dashboard
+
+**Prompt:** "Design a system that provides real-time metrics and dashboards for monitoring business KPIs."
+
+**Why Root asks this:** Staff engineers need to design observability systems; Root monitors millions of active policies and trips.
+
+```mermaid
+flowchart TB
+    subgraph "Event Sources"
+        APP[App Events]
+        SVC[Service Metrics]
+        BIZ[Business Events]
+    end
+
+    subgraph "Ingestion"
+        KAFKA[Kafka]
+        CONNECT[Kafka Connect]
+    end
+
+    subgraph "Processing"
+        FLINK[Apache Flink<br/>Windowed aggregations]
+        AGG[Pre-aggregator<br/>1m, 5m, 1h rollups]
+    end
+
+    subgraph "Storage"
+        DRUID[(Apache Druid<br/>Real-time OLAP)]
+        CLICKHOUSE[(ClickHouse<br/>Analytics)]
+        S3[(S3<br/>Raw events)]
+    end
+
+    subgraph "Serving"
+        CACHE[(Redis<br/>Dashboard cache)]
+        API[Query API]
+    end
+
+    subgraph "Visualization"
+        GRAFANA[Grafana]
+        CUSTOM[Custom Dashboard]
+    end
+
+    APP & SVC & BIZ --> KAFKA
+    KAFKA --> FLINK
+    FLINK --> AGG
+    AGG --> DRUID & CLICKHOUSE
+    KAFKA --> CONNECT --> S3
+    DRUID & CLICKHOUSE --> API
+    API --> CACHE
+    CACHE --> GRAFANA & CUSTOM
+```
+
+**Key Discussion Points:**
+
+| Topic | What to Cover |
+|-------|---------------|
+| **Pre-aggregation** | Roll up to 1m/5m/1h buckets to reduce query-time computation |
+| **OLAP choice** | Druid for sub-second slice-and-dice; ClickHouse for complex SQL |
+| **Dashboard refresh** | WebSocket push for real-time; 30s polling for less critical |
+| **Query patterns** | Time-range queries dominate; pre-compute common aggregations |
+| **Cost optimization** | Tier storage: hot (Druid) → warm (ClickHouse) → cold (S3) |
+
+**What to Say:**
+> "Events flow through Kafka to Flink, which computes windowed aggregations. We store pre-rolled data in Druid for sub-second dashboard queries. For complex ad-hoc analysis, we use ClickHouse. The dashboard caches common queries in Redis and uses WebSocket for real-time updates on critical metrics."
+
+---
+
+### Quick Reference: Root Interview Themes
+
+| Theme | Why It Matters | Key Technologies |
+|-------|----------------|------------------|
+| **High-volume data ingestion** | 31B+ miles of driving data | Kafka, Flink, Kinesis |
+| **Mobile-first architecture** | 15M+ app downloads | Battery optimization, batching |
+| **Real-time ML inference** | Instant risk scoring | Feature stores, Redis, low-latency serving |
+| **Regulatory compliance** | State-by-state insurance rules | Audit logs, explainable models |
+| **Fraud detection** | Insurance fraud prevention | Rules engines, graph analysis, anomaly detection |
+
+---
+
 ## Further Reading
 
 - [System Design Primer](https://github.com/donnemartin/system-design-primer) — Comprehensive GitHub resource
