@@ -723,6 +723,13 @@ Root Insurance is a mobile-first insurtech company using telematics to assess dr
 
 **Why Root asks this:** Core to their business—they collect accelerometer, gyroscope, and GPS data from 15M+ app installs across 31B+ miles.
 
+**Clarifying Questions to Ask:**
+- "What's the expected scale—how many active drivers sending data concurrently?"
+- "What's the latency requirement for risk scores—real-time per trip or batch nightly?"
+- "Do we need to handle offline scenarios where drivers have no connectivity?"
+- "Are there regulatory requirements for data retention or data residency?"
+- "Should the system support multiple data sources (phone sensors, OBD devices, connected cars)?"
+
 ```mermaid
 flowchart TB
     subgraph "Mobile Clients"
@@ -791,6 +798,13 @@ flowchart TB
 
 **Why Root asks this:** Insurance fraud costs billions annually; detecting staged accidents or false claims is critical.
 
+**Clarifying Questions to Ask:**
+- "Should detection happen in real-time (block the claim) or async (flag for review)?"
+- "What's the acceptable false positive rate—is it worse to block legitimate claims or miss fraud?"
+- "Do we have labeled historical fraud data to train ML models?"
+- "Should we detect individual fraud or also organized fraud rings?"
+- "Are there compliance requirements for explainability (why was this flagged)?"
+
 ```mermaid
 flowchart TB
     subgraph "Event Sources"
@@ -850,6 +864,14 @@ flowchart TB
 **Prompt:** "Design a system that calculates personalized insurance quotes based on real-time driving behavior."
 
 **Why Root asks this:** Their core differentiator—pricing based on actual driving vs demographics.
+
+**Clarifying Questions to Ask:**
+- "What's the latency requirement—how fast should a quote be returned?"
+- "Do quotes need to be reproducible for regulatory audits?"
+- "How often do rate tables and pricing rules change?"
+- "Do we need to support real-time pricing updates or is nightly refresh acceptable?"
+- "Are there state-by-state regulatory differences we need to handle?"
+- "Should we support A/B testing different pricing models?"
 
 ```mermaid
 flowchart TB
@@ -916,6 +938,14 @@ flowchart TB
 
 **Why Root asks this:** Tests understanding of real-time systems, geospatial indexing—relevant to their telematics infrastructure.
 
+**Clarifying Questions to Ask:**
+- "How many concurrent drivers do we need to support?"
+- "What's the acceptable latency for location updates to propagate?"
+- "Do we need to store location history or just current position?"
+- "What's the matching radius—city-level or neighborhood-level?"
+- "Do we need to handle drivers going offline/online frequently?"
+- "Are there regions with higher density that need special handling?"
+
 ```mermaid
 flowchart TB
     subgraph "Drivers"
@@ -976,6 +1006,14 @@ flowchart TB
 **Prompt:** "Design a system that provides real-time metrics and dashboards for monitoring business KPIs."
 
 **Why Root asks this:** Staff engineers need to design observability systems; Root monitors millions of active policies and trips.
+
+**Clarifying Questions to Ask:**
+- "What's the freshness requirement—real-time seconds or near-real-time minutes?"
+- "Who are the users—executives, analysts, or engineers?"
+- "Do we need ad-hoc queries or just pre-defined dashboards?"
+- "What's the data retention requirement—days, months, or years?"
+- "Do we need alerting based on thresholds?"
+- "What's the expected query pattern—time-range aggregations or drill-downs?"
 
 ```mermaid
 flowchart TB
