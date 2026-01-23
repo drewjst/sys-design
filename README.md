@@ -1,30 +1,12 @@
 # System Design Interview Prep
 
-Resources for system design interviews, with a focus on insurtech and data-intensive applications.
+**[Patterns](System%20Design%20Interview%20Patterns.md#pattern-selection-matrix)** · **[CAP Theorem](System%20Design%20Interview%20Patterns.md#cap-theorem)** · **[Strangler Fig](System%20Design%20Interview%20Patterns.md#6-strangler-fig-pattern)** · **[Technology Reference](System%20Design%20Interview%20Patterns.md#technology-reference-by-layer)** · **[Tool Selection](System%20Design%20Interview%20Patterns.md#tool-selection-quick-reference)**
 
-## Quick Links
+### Root Insurance Questions
 
-- **[System Design Interview Patterns](System%20Design%20Interview%20Patterns.md)** — Core patterns, technology reference, and interview framework
+[Telematics Pipeline](System%20Design%20Interview%20Patterns.md#question-1-design-a-telematics-data-pipeline) · [Fraud Detection](System%20Design%20Interview%20Patterns.md#question-2-design-a-real-time-fraud-detection-system) · [Pricing Engine](System%20Design%20Interview%20Patterns.md#question-3-design-a-usage-based-insurance-pricing-engine) · [Location Tracking](System%20Design%20Interview%20Patterns.md#question-4-design-a-real-time-location-tracking-system) · [Analytics Dashboard](System%20Design%20Interview%20Patterns.md#question-5-design-a-real-time-analytics-dashboard)
 
-### Key Sections
-
-| Section | Description |
-|---------|-------------|
-| [Pattern Selection Matrix](System%20Design%20Interview%20Patterns.md#pattern-selection-matrix) | Quick reference for choosing the right pattern |
-| [CAP Theorem](System%20Design%20Interview%20Patterns.md#cap-theorem) | Consistency vs availability tradeoffs |
-| [Strangler Fig Pattern](System%20Design%20Interview%20Patterns.md#6-strangler-fig-pattern) | Incremental monolith migration |
-| [Technology Reference](System%20Design%20Interview%20Patterns.md#technology-reference-by-layer) | Tools organized by architectural layer |
-| [Tool Selection Quick Reference](System%20Design%20Interview%20Patterns.md#tool-selection-quick-reference) | Typical stacks by pattern and scale |
-
-### Root Insurance Interview Questions
-
-| Question | Key Topics |
-|----------|------------|
-| [Telematics Data Pipeline](System%20Design%20Interview%20Patterns.md#question-1-design-a-telematics-data-pipeline) | Kafka, Flink, mobile batching, feature extraction |
-| [Fraud Detection System](System%20Design%20Interview%20Patterns.md#question-2-design-a-real-time-fraud-detection-system) | Rules engine, ML anomaly detection, graph analysis |
-| [Pricing Engine](System%20Design%20Interview%20Patterns.md#question-3-design-a-usage-based-insurance-pricing-engine) | Quote orchestration, caching, regulatory compliance |
-| [Location Tracking](System%20Design%20Interview%20Patterns.md#question-4-design-a-real-time-location-tracking-system) | WebSockets, Redis geospatial, matching |
-| [Analytics Dashboard](System%20Design%20Interview%20Patterns.md#question-5-design-a-real-time-analytics-dashboard) | Druid, ClickHouse, pre-aggregation |
+---
 
 ## Patterns Covered
 
