@@ -1,5 +1,11 @@
 # System Design Patterns: Interview Reference
 
+**[Patterns](#pattern-selection-matrix)** · **[CAP Theorem](#cap-theorem)** · **[Strangler Fig](#6-strangler-fig-pattern)** · **[Technology Reference](#technology-reference-by-layer)** · **[Tool Selection](#tool-selection-quick-reference)**
+
+**Root Insurance:** [Telematics Pipeline](#question-1-design-a-telematics-data-pipeline) · [Fraud Detection](#question-2-design-a-real-time-fraud-detection-system) · [Pricing Engine](#question-3-design-a-usage-based-insurance-pricing-engine) · [Location Tracking](#question-4-design-a-real-time-location-tracking-system) · [Analytics Dashboard](#question-5-design-a-real-time-analytics-dashboard)
+
+---
+
 There are only a handful of fundamental architectural patterns that solve most system design problems. This repo distills them into quick-reference diagrams you can internalize before interviews.
 
 ## Pattern Selection Matrix
